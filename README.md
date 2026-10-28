@@ -17,38 +17,43 @@ A minimal Quick Look extension for macOS. Select a `.md` file in Finder, press <
 ```sh
 git clone https://github.com/jozefcipa/macos-md-preview.git
 cd macos-md-preview
-./build.sh
-open ~/Applications/MDPreview.app   # once, so macOS registers the extension
+make install
 killall Finder
 ```
 
-`build.sh` builds the app and extension into `build/`, ad-hoc signs them, copies `MDPreview.app` to `~/Applications`, and registers the extension with `pluginkit`.
+| Target | What it does |
+|---|---|
+| `make` | Build and ad-hoc sign `build/MDPreview.app` (incremental) |
+| `make install` | Build, copy to `~/Applications`, register the extension, reset Quick Look |
+| `make uninstall` | Unregister and remove the installed app |
+| `make reload` | Reset Quick Look's generator list and cache |
+| `make clean` | Remove `build/` |
 
-If Finder still shows the plain-text preview, run `qlmanage -r` and relaunch Finder (or log out and back in).
+If Finder still shows the plain-text preview, run `make reload` and relaunch Finder (or log out and back in).
 
 ## How it works
 
-Quick Look extensions must live inside an app bundle, so `MDPreview.app` is an empty host app (`main.swift`) that carries `MDPreviewExtension.appex`.
+Quick Look extensions must live inside an app bundle, so `MDPreview.app` is an empty host app (`Sources/MDPreview/main.swift`) that carries `MDPreviewExtension.appex`.
 
-The extension (`PreviewProvider.swift`) is a data-based `QLPreviewProvider`. It reads the file, converts Markdown to HTML with [marked](https://github.com/markedjs/marked) and highlights code with [highlight.js](https://highlightjs.org), both running in JavaScriptCore, and returns the HTML to Quick Look. Rendering happens in Swift because Quick Look does not run JavaScript in HTML previews.
+The extension (`Sources/MDPreviewExtension/PreviewProvider.swift`) is a data-based `QLPreviewProvider`. It reads the file, converts Markdown to HTML with [marked](https://github.com/markedjs/marked) and highlights code with [highlight.js](https://highlightjs.org), both running in JavaScriptCore, and returns the HTML to Quick Look. Rendering happens in Swift because Quick Look does not run JavaScript in HTML previews.
 
-## Files
+## Project layout
 
-| File | Purpose |
-|---|---|
-| `PreviewProvider.swift` | The Quick Look extension |
-| `main.swift` | Empty host app |
-| `Extension-Info.plist`, `App-Info.plist` | Bundle metadata; supported content types live in the extension plist |
-| `sandbox.entitlements` | App Sandbox entitlements (required for extensions) |
-| `marked.min.js`, `highlight.min.js`, `hl-*.css` | Vendored renderer, highlighter and themes |
-| `build.sh` | Build, sign and install |
+```
+Sources/
+  MDPreview/               empty host app (main.swift, Info.plist)
+  MDPreviewExtension/      the Quick Look extension (PreviewProvider.swift, Info.plist)
+Assets/                    vendored marked, highlight.js and GitHub themes
+MDPreview.entitlements     App Sandbox entitlements (required for extensions)
+Makefile                   build, sign, install, uninstall
+```
+
+Supported content types are listed in `Sources/MDPreviewExtension/Info.plist`.
 
 ## Uninstall
 
 ```sh
-pluginkit -r ~/Applications/MDPreview.app/Contents/PlugIns/MDPreviewExtension.appex
-rm -rf ~/Applications/MDPreview.app
-qlmanage -r
+make uninstall
 ```
 
 ## Third-party licenses
